@@ -4,7 +4,6 @@ import type { TableColumn } from '@nuxt/ui'
 import { getPaginationRowModel } from '@tanstack/vue-table'
 
 interface UTableInstance {
-
   tableApi: {
     getState: () => { pagination: { pageIndex: number; pageSize: number } }
     getFilteredRowModel: () => { rows: any[] }
@@ -47,7 +46,6 @@ const { data, status } = await useFetch<{ products: Product[] }>('https://dummyj
 const headerButtonProps = {
   color: 'neutral' as const,
   variant: 'ghost' as const,
-  class: '-mx-2.5 dark:text-white'
 }
 
 const columns: TableColumn<Product>[] = [
@@ -68,7 +66,7 @@ const columns: TableColumn<Product>[] = [
     },
     filterFn: 'includesString',
     cell: ({ row }) => {
-      return h('div', { class: 'dark:text-white' }, row.getValue('title'))
+      return h('div', row.getValue('title'))
     }
   },
   {
@@ -87,7 +85,7 @@ const columns: TableColumn<Product>[] = [
       })
     },
     cell: ({ row }) => {
-      return h('div', { class: 'whitespace-normal dark:text-white' }, row.getValue('description'))
+      return h('div', { class: 'whitespace-normal' }, row.getValue('description'))
     },
     filterFn: 'includesString'
   },
@@ -95,7 +93,7 @@ const columns: TableColumn<Product>[] = [
     accessorKey: 'price',
     header: ({ column }) => {
       const isSorted = column.getIsSorted()
-      return h('div', { class: 'text-right dark:text-white' }, [
+      return h('div', { class: 'text-right' }, [
         h(UButton, {
           ...headerButtonProps,
           label: 'Ціна',
@@ -114,7 +112,7 @@ const columns: TableColumn<Product>[] = [
         style: 'currency',
         currency: 'USD'
       }).format(price)
-      return h('div', { class: 'text-right font-medium dark:text-white' }, formatted)
+      return h('div', { class: 'text-right font-medium' }, formatted)
     }
   },
   {
@@ -154,8 +152,9 @@ const columns: TableColumn<Product>[] = [
       })
     },
     cell: ({ row }) => {
-      return h('div', { class: 'dark:text-white' }, row.getValue('brand'))
-    }
+      return h('div', row.getValue('brand'))
+    },
+    filterFn: 'includesString'
   },
   {
     accessorKey: 'category',
@@ -173,13 +172,14 @@ const columns: TableColumn<Product>[] = [
       })
     },
     cell: ({ row }) => {
-      return h('div', { class: 'dark:text-white' }, row.getValue('category'))
-    }
+      return h('div', row.getValue('category'))
+    },
+    filterFn: 'includesString'
   },
   {
     accessorKey: 'thumbnail',
     header: () => {
-      return h('div', { class: 'dark:text-white' }, 'Фото')
+      return h('div', 'Фото')
     },
     cell: ({ row }) => {
       return h('img', {
@@ -198,6 +198,9 @@ const pagination = ref({
 })
 const titleFilter = ref<string>('')
 const descriptionFilter = ref<string>('')
+const brandFilter = ref<string>('')
+const categoryFilter = ref<string>('')
+const globalFilter = ref<string>('')
 
 const sorting = ref([])
 
@@ -208,11 +211,13 @@ const showingStart = computed((): number => pageIndex.value * pageSize.value + 1
 const showingEnd = computed((): number => Math.min((pageIndex.value + 1) * pageSize.value, totalRows.value))
 const paginationText = computed((): string => `Показ ${showingStart.value}–${showingEnd.value} із ${totalRows.value} продуктів`)
 
-watch([titleFilter, descriptionFilter], () => {
+watch([titleFilter, descriptionFilter, brandFilter, categoryFilter, globalFilter], () => {
   if (table.value?.tableApi) {
     table.value.tableApi.setColumnFilters([
       { id: 'title', value: titleFilter.value },
-      { id: 'description', value: descriptionFilter.value }
+      { id: 'description', value: descriptionFilter.value },
+      { id: 'brand', value: brandFilter.value },
+      { id: 'category', value: categoryFilter.value }
     ])
   }
 })
@@ -221,35 +226,40 @@ watch([titleFilter, descriptionFilter], () => {
 <template>
   <div class="flex flex-col w-full p-4 space-y-4 pb-12">
     <div class="flex justify-between items-center">
-      <h1 class="text-2xl font-bold text-center flex-1 dark:text-white">Список продуктів</h1>
+      <h1 class="text-2xl font-bold text-center flex-1">Список продуктів</h1>
       <UButton
           :icon="colorMode.value === 'dark' ? 'i-heroicons-sun-20-solid' : 'i-heroicons-moon-20-solid'"
           color="gray"
           variant="ghost"
           aria-label="Toggle theme"
-          class="dark:text-white"
           @click="toggleTheme"
       />
     </div>
-    <div class="flex px-4 py-3.5 border-b border-gray-200 dark:border-gray-700 w-full gap-4">
-      <UInput v-model="titleFilter" class="flex-1 dark:text-white" placeholder="Пошук за назвою..." />
-      <UInput v-model="descriptionFilter" class="flex-1 dark:text-white" placeholder="Пошук за описом..." />
+    <div class="flex flex-col gap-4">
+      <UInput v-model="globalFilter" class="w-full" placeholder="Глобальний пошук..." />
+      <div class="flex flex-wrap gap-4">
+        <UInput v-model="titleFilter" class="flex-1 min-w-[200px]" placeholder="Пошук за назвою..." />
+        <UInput v-model="descriptionFilter" class="flex-1 min-w-[200px]" placeholder="Пошук за описом..." />
+        <UInput v-model="brandFilter" class="flex-1 min-w-[200px]" placeholder="Пошук за брендом..." />
+        <UInput v-model="categoryFilter" class="flex-1 min-w-[200px]" placeholder="Пошук за категорією..." />
+      </div>
     </div>
 
     <UTable
         ref="table"
         v-model:pagination="pagination"
         v-model:sorting="sorting"
+        v-model:global-filter="globalFilter"
         :data="data?.products"
         :columns="columns"
         :loading="status === 'pending'"
         :pagination-options="{
         getPaginationRowModel: getPaginationRowModel()
       }"
-        class="flex-1 border border-gray-200 dark:border-gray-700"
+        class="flex-1"
     />
 
-    <div class="flex justify-between items-center border-t border-gray-200 dark:border-gray-700 pt-4">
+    <div class="flex justify-between items-center pt-4">
       <div class="flex-1"></div>
       <div class="flex justify-center">
         <UPagination
@@ -259,33 +269,7 @@ watch([titleFilter, descriptionFilter], () => {
             @update:page="(p: number) => table?.tableApi?.setPageIndex(p - 1)"
         />
       </div>
-      <span class="text-sm text-gray-500 dark:text-white flex-1 text-right">{{ paginationText }}</span>
+      <span class="text-sm flex-1 text-right">{{ paginationText }}</span>
     </div>
   </div>
 </template>
-
-<style scoped>
-th:not(:last-child) {
-  border-right: 1px solid #e5e7eb;
-}
-.dark th:not(:last-child) {
-  border-right: 1px solid #374151;
-}
-
-td, th {
-  padding: 0.25rem;
-}
-
-td, th {
-  font-size: 0.875rem;
-}
-
-.dark [data-ui='input'] input,
-.dark [data-ui='input'] input::placeholder {
-  color: #ffffff !important;
-}
-
-.dark .pagination button {
-  color: #ffffff !important;
-}
-</style>
